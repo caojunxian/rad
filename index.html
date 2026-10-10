@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>🎬 视频解析助手</title>
+<style>
+:root {
+  --bg: #0f172a;
+  --bg-soft: #1e293b;
+  --bg-card: #1e293b;
+  --border: #334155;
+  --text: #f1f5f9;
+  --text-soft: #94a3b8;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --radius: 12px;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', Roboto, Helvetica, Arial, sans-serif;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--primary); text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+input, textarea { font-family: inherit; }
+.container { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
+
+/* 通用按钮 */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px 18px; border-radius: var(--radius); font-size: 15px;
+  font-weight: 600; transition: all 0.2s ease; white-space: nowrap; min-height: 44px;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
+.btn-secondary { background: var(--bg-soft); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover:not(:disabled) { background: #334155; }
+
+/* 输入框 */
+.input {
+  width: 100%; padding: 14px 16px; background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: var(--radius); color: var(--text);
+  font-size: 15px; outline: none; transition: border-color 0.2s; word-break: break-all;
+}
+.input:focus { border-color: var(--primary); }
+.input::placeholder { color: var(--text-soft); }
+
+/* 卡片 */
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+
+/* 提示状态 */
+.status { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: var(--radius); font-size: 14px; }
+.status-info { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; }
+.status-success { background: rgba(34, 197, 94, 0.15); color: #86efac; }
+.status-error { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+.status-warning { background: rgba(245, 158, 11, 0.15); color: #fcd34d; }
+
+/* 加载动画 */
+.spinner {
+  width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 头部 */
+.header { text-align: center; padding: 30px 10px 20px; }
+.site-title {
+  font-size: 28px; font-weight: 800;
+  background: linear-gradient(135deg, #a5b4fc, #818cf8);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  margin-bottom: 6px;
+}
+.site-desc { color: var(--text-soft); font-size: 14px; }
+
+/* 输入区 */
+.input-section { display: flex; flex-direction: column; gap: 12px; }
+.btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-group .btn { flex: 1; min-width: 100px; }
+.password-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.password-input {
+  flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg-elevated, #0f172a); color: var(--text); font-size: 14px;
+  outline: none; transition: border-color 0.2s;
+}
+.password-input:focus { border-color: #818cf8; }
+.internal-badge {
+  flex-shrink: 0; padding: 4px 10px;
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #fff; border-radius: 20px; font-size: 12px; font-weight: 600;
+}
+
+/* 视频信息 */
+.player-card { padding: 16px; }
+.player-divider { height: 1px; background: var(--border); margin: 16px 0; }
+.video-info { display: flex; gap: 16px; align-items: flex-start; }
+.cover-wrapper {
+  flex-shrink: 0; width: 200px; aspect-ratio: 16 / 9;
+  border-radius: 8px; overflow: hidden; background: #000;
+}
+.cover { width: 100%; height: 100%; object-fit: cover; }
+.cover-placeholder {
+  width: 100%; height: 100%; display: flex; align-items: center;
+  justify-content: center; font-size: 48px; background: var(--bg-soft);
+}
+.info-body { flex: 1; min-width: 0; }
+.info-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; word-break: break-all; }
+.meta {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  font-size: 13px; color: var(--text-soft); margin-bottom: 10px;
+}
+.tag { background: var(--bg-soft); padding: 4px 10px; border-radius: 6px; }
+.preview-notice {
+  background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fcd34d; padding: 10px 12px; border-radius: 8px; font-size: 13px;
+}
+
+/* 播放器 */
+.player-container { width: 100%; background: #000; border-radius: var(--radius); overflow: hidden; }
+.video { width: 100%; display: block; max-height: 70vh; background: #000; }
+.player-placeholder {
+  width: 100%; aspect-ratio: 16 / 9; background: var(--bg-soft);
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--text-soft); gap: 12px;
+}
+.placeholder-icon { font-size: 56px; opacity: 0.5; }
+
+/* 历史记录 */
+.history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.history-header h3 { font-size: 16px; font-weight: 600; }
+.clear-all-btn { background: transparent; color: var(--danger); font-size: 13px; padding: 4px 8px; border-radius: 6px; }
+.clear-all-btn:hover { background: rgba(239, 68, 68, 0.1); }
+.empty { text-align: center; color: var(--text-soft); padding: 30px; font-size: 14px; }
+.history-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.history-item {
+  display: flex; gap: 12px; align-items: center; padding: 10px;
+  background: var(--bg-soft); border: 1px solid var(--border);
+  border-radius: 10px; transition: background 0.2s;
+}
+.history-item:hover { background: #273449; }
+.item-cover { flex-shrink: 0; width: 80px; height: 45px; border-radius: 6px; overflow: hidden; background: #000; }
+.item-cover img { width: 100%; height: 100%; object-fit: cover; }
+.item-body { flex: 1; min-width: 0; }
+.item-title {
+  font-size: 14px; font-weight: 600; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;
+}
+.item-url, .item-time { font-size: 11px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-time { margin-top: 2px; }
+.item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.action-btn {
+  width: 32px; height: 32px; border-radius: 8px; display: flex;
+  align-items: center; justify-content: center; font-size: 14px; transition: all 0.2s;
+}
+.action-btn.replay { background: var(--primary); color: #fff; }
+.action-btn.replay:hover { background: var(--primary-hover); }
+.action-btn.delete { background: transparent; color: var(--danger); border: 1px solid var(--border); }
+.action-btn.delete:hover { background: var(--danger); color: #fff; }
+
+/* 页脚 */
+.footer { text-align: center; padding: 20px 10px; color: var(--text-soft); font-size: 12px; }
+.footer .link-btn { background: transparent; color: var(--primary); font-size: 12px; text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .site-title { font-size: 22px; }
+  .container { padding: 12px; }
+  .btn { padding: 12px 14px; font-size: 14px; }
+}
+@media (max-width: 600px) {
+  .video-info { flex-direction: column; }
+  .cover-wrapper { width: 100%; }
+}
+@media (max-width: 480px) {
+  .btn-group { flex-direction: column; }
+  .btn-group .btn { width: 100%; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="container">
+    <!-- 头部 -->
+    <header class="header">
+      <h1 class="site-title">🎬 视频解析助手</h1>
+      <p class="site-desc">粘贴视频链接，一键解析预览</p>
+    </header>
+
+    <!-- 输入区 -->
+    <section class="card">
+      <div class="input-section">
+        <input id="videoUrl" type="text" class="input"
+               placeholder="粘贴视频链接，例如 https://taolusm.com/v/114888" />
+        <div class="btn-group">
+          <button id="pasteBtn" class="btn btn-secondary"><span>📋</span> 粘贴</button>
+          <button id="parseBtn" class="btn btn-primary"><span id="parseIcon">🔍</span> <span id="parseText">立即解析</span></button>
+          <button id="clearBtn" class="btn btn-secondary"><span>🗑️</span> 清空</button>
+        </div>
+      </div>
+      <!-- 内部人员密码：输入正确密码可解析完整版 -->
+      <div class="password-row">
+        <input id="passwordInput" type="password" class="password-input"
+               placeholder="内部人员密码（选填，正确则解析完整版）" />
+        <span id="internalBadge" class="internal-badge" style="display:none">🔓 完整版</span>
+      </div>
+      <!-- 未输入内部密码时，可手动填写 VIP Cookie -->
+      <div id="vipCookieRow" class="password-row">
+        <input id="vipCookieInput" type="password" class="password-input"
+               placeholder="或填写你的 VIP Cookie（选填，用于解析完整版）" />
+      </div>
+    </section>
+
+    <!-- 状态提示 -->
+    <div id="statusContainer" style="display:none; margin-bottom:16px"></div>
+
+    <!-- 视频信息 + 播放器 -->
+    <section id="playerCard" class="card player-card" style="display:none">
+      <div id="videoInfo"></div>
+      <div class="player-divider"></div>
+      <div class="player-wrap">
+        <div id="playerContainer" class="player-container" style="display:none">
+          <video id="videoEl" class="video" controls playsinline preload="metadata"></video>
+        </div>
+        <div id="playerPlaceholder" class="player-placeholder">
+          <div class="placeholder-icon">▶️</div>
+          <p>解析成功后视频将在此播放</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 历史记录 -->
+    <section class="card">
+      <div class="history-header">
+        <h3>📜 最近播放历史</h3>
+        <button id="clearAllBtn" class="clear-all-btn" style="display:none">清空全部</button>
+      </div>
+      <div id="historyEmpty" class="empty">暂无历史记录</div>
+      <ul id="historyList" class="history-list" style="display:none"></ul>
+    </section>
+
+    <footer class="footer">
+      <p>
+        预览视频解析后直接在线播放；完整版需输入内部密码（站点接口授权）或你的
+        VIP Cookie，也可前往 <a href="https://taolusm.com/" target="_blank" rel="noopener">原网站</a> 观看
+      </p>
+      <p style="margin-top:6px">
+        后端地址：<span id="apiBaseText"></span>
+        <button id="apiBaseBtn" class="link-btn">修改</button>
+      </p>
+    </footer>
+  </div>
+</div>
+
+<!-- 播放引擎（CDN 加载，失败时自动降级：HLS 用原生 video 兜底，DASH 提示不支持） -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<script>
+'use strict';
+
+/* ============ 配置 ============ */
+// 后端地址（可在页脚修改，保存在 localStorage）
+var API_BASE = localStorage.getItem('parser_api_base') || 'http://127.0.0.1:3001/api';
+var INTERNAL_PASSWORD = '803636';
+
+/* ============ 错误处理 ============ */
+var ErrorType = {
+  NETWORK: 'network',
+  PAGE_ACCESS: 'page_access',
+  PARSE: 'parse',
+  VIDEO_UNAVAILABLE: 'video_unavailable',
+  URL_INVALID: 'url_invalid',
+  UNKNOWN: 'unknown',
+};
+
+function classifyError(message) {
+  if (!message) return ErrorType.UNKNOWN;
+  if (/网络异常|后端服务|fetch failed/i.test(message)) return ErrorType.NETWORK;
+  if (/无法访问目标页面/i.test(message)) return ErrorType.PAGE_ACCESS;
+  if (/页面信息提取失败/i.test(message)) return ErrorType.PARSE;
+  if (/预览资源|视频资源不可用/i.test(message)) return ErrorType.VIDEO_UNAVAILABLE;
+  if (/链接格式|不支持该域名|视频 ID|请输入视频链接|缺少 url/i.test(message)) return ErrorType.URL_INVALID;
+  return ErrorType.UNKNOWN;
+}
+
+function friendlyError(type, rawMessage) {
+  switch (type) {
+    case ErrorType.NETWORK:
+      return '网络连接失败，请检查后端服务是否启动（端口 3001）';
+    case ErrorType.PAGE_ACCESS:
+      return rawMessage || '无法访问目标网页，请检查链接是否正确或稍后重试';
+    case ErrorType.PARSE:
+      return rawMessage || '页面解析失败，目标网站结构可能已变更';
+    case ErrorType.VIDEO_UNAVAILABLE:
+      return rawMessage || '该视频暂无可公开访问的预览资源，完整版需前往原网站观看';
+    case ErrorType.URL_INVALID:
+      return rawMessage || '链接格式不正确，请输入 https://taolusm.com/v/数字 格式的链接';
+    default:
+      return rawMessage || '解析失败，请稍后重试';
+  }
+}
+
+function friendlyFullVideoError(code) {
+  var map = {
+    full_video_api_not_configured: '未配置完整版接口',
+    full_video_source_not_configured: '完整版授权视频源未接入',
+    video_not_found: '授权视频源中没有该视频的完整版',
+    upstream_error: '授权服务暂时不可用',
+    upstream_bad_response: '授权服务返回了异常响应',
+    api_returned_failure: '授权接口返回失败',
+    api_returned_invalid_url: '授权接口返回的地址无效',
+    api_returned_preview_only: '授权接口只返回了预览地址',
+    invalid_video_id: '视频 ID 无效',
+    unauthorized: '接口密钥校验失败',
+    unauthorized_cookie: '提供的 Cookie 无有效会员权限',
+    internal_error: '服务端内部错误',
+    timeout: '请求授权接口超时',
+    timeout_ms_exceeded: '请求授权接口超时',
+  };
+  if (map[code]) return map[code];
+  if (code && /^http_\d+$/.test(code)) return '授权接口异常（' + code.replace('_', ' ') + '）';
+  return code ? '完整版获取失败（' + code + '）' : '';
+}
+
+/* ============ API ============ */
+async function parseVideo(url, password, vipCookie, signal) {
+  try {
+    var body = { url: url };
+    if (password) body.password = password;
+    if (vipCookie) body.vipCookie = vipCookie;
+    var res = await fetch(API_BASE + '/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: signal,
+    });
+    if (!res.ok) {
+      var msg = '请求失败 (HTTP ' + res.status + ')';
+      try {
+        var d = await res.json();
+        if (d && d.error) msg = d.error;
+      } catch (_) {}
+      var t = classifyError(msg);
+      return { success: false, error: friendlyError(t, msg), errorType: t };
+    }
+    var data = await res.json();
+    if (data.success) return { success: true, data: data.data };
+    var type = classifyError(data.error);
+    return { success: false, error: friendlyError(type, data.error), errorType: type };
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      return { success: false, error: '请求已取消', errorType: ErrorType.UNKNOWN };
+    }
+    return { success: false, error: friendlyError(ErrorType.NETWORK), errorType: ErrorType.NETWORK };
+  }
+}
+
+function getProxyVideoUrl(videoUrl) {
+  if (!videoUrl) return '';
+  return API_BASE + '/proxy-video?url=' + encodeURIComponent(videoUrl);
+}
+
+/* ============ 历史记录（localStorage，不存任何敏感信息） ============ */
+var HISTORY_KEY = 'video_parser_history';
+var MAX_HISTORY = 20;
+
+function getHistory() {
+  try {
+    var raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    var list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function addHistory(item) {
+  if (!item || !item.url) return;
+  var list = getHistory().filter(function (i) { return i.url !== item.url; });
+  list.unshift({ url: item.url, title: item.title || '未知视频', cover: item.cover || '', time: Date.now() });
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, MAX_HISTORY)));
+}
+
+function removeHistory(url) {
+  var list = getHistory().filter(function (i) { return i.url !== url; });
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+}
+
+function clearHistoryStorage() {
+  localStorage.removeItem(HISTORY_KEY);
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  var d = new Date(ts);
+  var diff = Date.now() - d;
+  var min = 60 * 1000, hour = 60 * min, day = 24 * hour;
+  if (diff < min) return '刚刚';
+  if (diff < hour) return Math.floor(diff / min) + ' 分钟前';
+  if (diff < day) return Math.floor(diff / hour) + ' 小时前';
+  if (diff < 7 * day) return Math.floor(diff / day) + ' 天前';
+  return (d.getMonth() + 1) + '/' + d.getDate();
+}
+
+/* ============ DOM 引用 ============ */
+var $ = function (id) { return document.getElementById(id); };
+var videoUrlEl = $('videoUrl');
+var passwordInput = $('passwordInput');
+var vipCookieInput = $('vipCookieInput');
+var vipCookieRow = $('vipCookieRow');
+var internalBadge = $('internalBadge');
+var parseBtn = $('parseBtn'), parseIcon = $('parseIcon'), parseText = $('parseText');
+var statusContainer = $('statusContainer');
+var playerCard = $('playerCard'), videoInfo = $('videoInfo');
+var playerContainer = $('playerContainer'), playerPlaceholder = $('playerPlaceholder');
+var videoEl = $('videoEl');
+var historyList = $('historyList'), historyEmpty = $('historyEmpty'), clearAllBtn = $('clearAllBtn');
+
+var loading = false;
+var statusTimer = null;
+var abortController = null;
+var currentHls = null;
+
+/* ============ 状态提示 ============ */
+function setStatus(type, message) {
+  var icon = { info: 'ℹ️', success: '✅', error: '❌' }[type] || '⚠️';
+  statusContainer.style.display = '';
+  statusContainer.innerHTML = '';
+  var div = document.createElement('div');
+  div.className = 'status status-' + type;
+  div.innerHTML = '<span class="status-icon">' + icon + '</span>';
+  div.appendChild(document.createTextNode(' ' + message));
+  statusContainer.appendChild(div);
+  if (statusTimer) clearTimeout(statusTimer);
+  if (type === 'success' || type === 'info') {
+    statusTimer = setTimeout(function () {
+      statusContainer.style.display = 'none';
+    }, 5000);
+  }
+}
+
+/* ============ 播放器（MP4 原生 / HLS hls.js / DASH dash.js） ============ */
+function destroyPlayers() {
+  if (currentHls) { currentHls.destroy(); currentHls = null; }
+}
+
+function setupPlayer(url) {
+  destroyPlayers();
+  if (!url) return;
+  playerContainer.style.display = '';
+  playerPlaceholder.style.display = 'none';
+
+  var decoded = decodeURIComponent(url || '');
+  if (/\.m3u8/i.test(decoded)) {
+    if (window.Hls && Hls.isSupported()) {
+      currentHls = new Hls({ maxBufferLength: 60, enableWorker: true });
+      currentHls.loadSource(url);
+      currentHls.attachMedia(videoEl);
+      currentHls.on(Hls.Events.ERROR, function (_e, data) {
+        if (data && data.fatal) {
+          setStatus('error', 'HLS 加载失败（' + (data.details || '未知错误') + '），资源可能已失效或域名未加入代理白名单');
+        }
+      });
+      currentHls.on(Hls.Events.MANIFEST_PARSED, function () {
+        setStatus('success', '视频加载完成');
+      });
+    } else {
+      // Safari/iOS 原生支持 HLS
+      videoEl.src = url;
+      videoEl.load();
+    }
+  } else if (/\.mpd/i.test(decoded)) {
+    // DASH：按需加载 dash.js（页面默认不引入，避免无用请求）
+    loadScript('https://cdn.jsdelivr.net/npm/dashjs@4.7.4/dist/dash.all.min.js', function (ok) {
+      if (ok && window.dashjs) {
+        var dp = dashjs.MediaPlayer().create();
+        dp.initialize(videoEl, url, false);
+        dp.on('error', function (e) {
+          setStatus('error', 'DASH 加载失败（' + ((e && (e.error || e.eventId)) || '未知错误') + '），资源可能已失效或域名未加入代理白名单');
+        });
+      } else {
+        setStatus('error', 'DASH 播放引擎加载失败，请检查网络后刷新重试');
+      }
+    });
+  } else {
+    videoEl.src = url;
+    videoEl.load();
+  }
+}
+
+function loadScript(src, cb) {
+  var s = document.createElement('script');
+  s.src = src;
+  s.onload = function () { cb(true); };
+  s.onerror = function () { cb(false); };
+  document.head.appendChild(s);
+}
+
+videoEl.addEventListener('error', function () {
+  // HLS 模式下 video 无 src（由 hls.js 控制），错误交由引擎处理
+  if (videoEl.src && !currentHls) {
+    setStatus('error', '视频加载失败，该资源可能已失效或被限制访问');
+  }
+});
+videoEl.addEventListener('loadedmetadata', function () {
+  if (videoEl.duration && isFinite(videoEl.duration)) {
+    // 元数据加载完成即可播放，静默处理即可
+  }
+});
+
+/* ============ 视频信息渲染 ============ */
+function renderVideoInfo(info) {
+  videoInfo.innerHTML = '';
+  if (!info) return;
+  var wrap = document.createElement('div');
+  wrap.className = 'video-info';
+
+  var coverWrap = document.createElement('div');
+  coverWrap.className = 'cover-wrapper';
+  if (info.cover) {
+    var img = document.createElement('img');
+    img.className = 'cover';
+    img.src = info.cover;
+    img.alt = info.title || '';
+    img.loading = 'lazy';
+    img.onerror = function () { img.style.display = 'none'; };
+    coverWrap.appendChild(img);
+  } else {
+    var ph = document.createElement('div');
+    ph.className = 'cover-placeholder';
+    ph.textContent = '🎬';
+    coverWrap.appendChild(ph);
+  }
+
+  var body = document.createElement('div');
+  body.className = 'info-body';
+  var h2 = document.createElement('h2');
+  h2.className = 'info-title';
+  h2.textContent = info.title || '';
+  body.appendChild(h2);
+
+  var meta = document.createElement('div');
+  meta.className = 'meta';
+  var tag1 = document.createElement('span');
+  tag1.className = 'tag';
+  tag1.textContent = '视频ID: ' + (info.videoId || '-');
+  meta.appendChild(tag1);
+  if (info.duration) {
+    var tag2 = document.createElement('span');
+    tag2.className = 'tag';
+    tag2.textContent = '⏱ ' + info.duration;
+    meta.appendChild(tag2);
+  }
+  if (info.sourceUrl) {
+    var a = document.createElement('a');
+    a.className = 'source-link';
+    a.href = info.sourceUrl;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = '查看原页面 →';
+    meta.appendChild(a);
+  }
+  body.appendChild(meta);
+
+  if (info.isPreview && info.notice) {
+    var notice = document.createElement('div');
+    notice.className = 'preview-notice';
+    notice.textContent = '⚠️ ' + info.notice;
+    body.appendChild(notice);
+  }
+
+  wrap.appendChild(coverWrap);
+  wrap.appendChild(body);
+  videoInfo.appendChild(wrap);
+}
+
+/* ============ 历史记录渲染 ============ */
+function renderHistory() {
+  var list = getHistory();
+  clearAllBtn.style.display = list.length ? '' : 'none';
+  historyEmpty.style.display = list.length ? 'none' : '';
+  historyList.style.display = list.length ? '' : 'none';
+  historyList.innerHTML = '';
+
+  list.forEach(function (item) {
+    var li = document.createElement('li');
+    li.className = 'history-item';
+
+    var cover = document.createElement('div');
+    cover.className = 'item-cover';
+    if (item.cover) {
+      var img = document.createElement('img');
+      img.src = item.cover;
+      img.alt = item.title || '';
+      img.loading = 'lazy';
+      img.onerror = function () { img.style.display = 'none'; };
+      cover.appendChild(img);
+    }
+
+    var b = document.createElement('div');
+    b.className = 'item-body';
+    var t = document.createElement('div');
+    t.className = 'item-title';
+    t.title = item.title || '';
+    t.textContent = item.title || '';
+    var u = document.createElement('div');
+    u.className = 'item-url';
+    u.title = item.url || '';
+    u.textContent = item.url || '';
+    var time = document.createElement('div');
+    time.className = 'item-time';
+    time.textContent = formatTime(item.time);
+    b.appendChild(t); b.appendChild(u); b.appendChild(time);
+
+    var acts = document.createElement('div');
+    acts.className = 'item-actions';
+    var replayBtn = document.createElement('button');
+    replayBtn.className = 'action-btn replay';
+    replayBtn.title = '重新解析';
+    replayBtn.textContent = '▶';
+    replayBtn.onclick = function () {
+      videoUrlEl.value = item.url;
+      handleParse();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    var delBtn = document.createElement('button');
+    delBtn.className = 'action-btn delete';
+    delBtn.title = '删除';
+    delBtn.textContent = '✕';
+    delBtn.onclick = function () { removeHistory(item.url); renderHistory(); };
+    acts.appendChild(replayBtn);
+    acts.appendChild(delBtn);
+
+    li.appendChild(cover);
+    li.appendChild(b);
+    li.appendChild(acts);
+    historyList.appendChild(li);
+  });
+}
+
+/* ============ 凭据（密码/Cookie 只存本机 localStorage） ============ */
+function syncCredentialUI() {
+  var isInternal = passwordInput.value.trim() === INTERNAL_PASSWORD;
+  internalBadge.style.display = isInternal ? '' : 'none';
+  vipCookieRow.style.display = isInternal ? 'none' : '';
+}
+
+function saveCredentials() {
+  localStorage.setItem('internal_password', passwordInput.value);
+  localStorage.setItem('user_vip_cookie', vipCookieInput.value);
+}
+
+/* ============ 核心：解析 ============ */
+function setLoading(v) {
+  loading = v;
+  parseBtn.disabled = v || !videoUrlEl.value.trim();
+  parseIcon.innerHTML = v ? '<span class="spinner"></span>' : '🔍';
+  parseText.textContent = v ? '解析中...' : '立即解析';
+}
+
+async function handleParse() {
+  var url = videoUrlEl.value.trim();
+  if (!url) { setStatus('error', '请输入视频链接'); return; }
+
+  // 公开可访问的视频直链（m3u8/mpd/mp4）：不走页面解析，直接经代理播放
+  if (/^https?:\/\/.+\.(m3u8|mpd|mp4)(\?.*)?$/i.test(url)) {
+    var info = {
+      videoId: '直连',
+      title: url.split('/').pop().split('?')[0] || '直连视频',
+      cover: '',
+      sourceUrl: url,
+      videoUrl: url,
+      isPreview: false,
+      notice: '',
+    };
+    renderVideoInfo(info);
+    playerCard.style.display = '';
+    setupPlayer(getProxyVideoUrl(url));
+    setStatus('success', '已识别为视频直链，正在加载播放');
+    return;
+  }
+
+  saveCredentials();
+  if (abortController) abortController.abort();
+  abortController = new AbortController();
+
+  setLoading(true);
+  renderVideoInfo(null);
+  playerCard.style.display = 'none';
+  destroyPlayers();
+  videoEl.removeAttribute('src');
+
+  var isInternal = passwordInput.value.trim() === INTERNAL_PASSWORD;
+  var hasFullAccess = isInternal || !!vipCookieInput.value.trim();
+  setStatus('info', hasFullAccess ? '正在解析完整版视频，请稍候...' : '正在解析视频，请稍候...');
+
+  var result = await parseVideo(url, passwordInput.value, vipCookieInput.value, abortController.signal);
+
+  if (result.success) {
+    var data = result.data;
+    renderVideoInfo(data);
+    playerCard.style.display = '';
+    setupPlayer(getProxyVideoUrl(data.videoUrl || ''));
+    if (data.isPreview) {
+      var reason = data.fullVideoError ? '，原因：' + friendlyFullVideoError(data.fullVideoError) : '';
+      setStatus('warning', '解析到的是公开预览版（非完整版）' + reason + '，正在加载视频');
+    } else {
+      setStatus('success', '解析成功（完整版），正在加载视频');
+    }
+    addHistory({ url: data.sourceUrl, title: data.title, cover: data.cover });
+    renderHistory();
+  } else {
+    setStatus(result.errorType === ErrorType.NETWORK ? 'warning' : 'error', result.error || '解析失败');
+  }
+
+  setLoading(false);
+}
+
+/* ============ 事件绑定 ============ */
+parseBtn.onclick = handleParse;
+videoUrlEl.addEventListener('keyup', function (e) { if (e.key === 'Enter') handleParse(); });
+passwordInput.addEventListener('keyup', function (e) { if (e.key === 'Enter') handleParse(); });
+vipCookieInput.addEventListener('keyup', function (e) { if (e.key === 'Enter') handleParse(); });
+passwordInput.addEventListener('input', syncCredentialUI);
+
+$('clearBtn').onclick = function () {
+  videoUrlEl.value = '';
+  setLoading(loading); // 刷新按钮禁用状态
+  videoUrlEl.focus();
+};
+
+$('pasteBtn').onclick = async function () {
+  try {
+    var text = await navigator.clipboard.readText();
+    if (text) {
+      videoUrlEl.value = text.trim();
+      setLoading(loading);
+      handleParse();
+    }
+  } catch (e) {
+    setStatus('info', '无法读取剪贴板，请手动按 Ctrl+V 粘贴链接');
+    videoUrlEl.focus();
+  }
+};
+
+clearAllBtn.onclick = function () {
+  if (confirm('确定要清空全部历史记录吗？')) {
+    clearHistoryStorage();
+    renderHistory();
+  }
+};
+
+$('apiBaseBtn').onclick = function () {
+  var v = prompt('后端服务地址（如 http://127.0.0.1:3001/api）：', API_BASE);
+  if (v && v.trim()) {
+    API_BASE = v.trim().replace(/\/$/, '');
+    localStorage.setItem('parser_api_base', API_BASE);
+    $('apiBaseText').textContent = API_BASE;
+  }
+};
+
+/* ============ 初始化 ============ */
+passwordInput.value = localStorage.getItem('internal_password') || '';
+vipCookieInput.value = localStorage.getItem('user_vip_cookie') || '';
+syncCredentialUI();
+renderHistory();
+$('apiBaseText').textContent = API_BASE;
+setLoading(false);
+</script>
+</body>
+</html>
